@@ -8,9 +8,9 @@ from shortcuts import Shortcuts
 from updater import Updater  # ← new import
 
 # --- App metadata ---
-APP_VERSION = "1.0.1"  # bump this each release
+APP_VERSION = "1.0.2"  # bump this each release
 UPDATE_FEED = "https://therealkushi.github.io/Cobalt-Browser/updates.json"
-APP_ID = "cobalt.browser.1.0.1"  # Windows taskbar AppUserModelID
+APP_ID = "cobalt.browser.1.0.2"  # Windows taskbar AppUserModelID
 
 if __name__ == "__main__":
     # Get absolute path to icon (works for PyInstaller too)
