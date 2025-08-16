@@ -9,7 +9,7 @@ from updater import Updater  # ← new import
 
 # --- App metadata ---
 APP_VERSION = "1.0.0"  # bump this each release
-UPDATE_FEED = "https://your-domain-or-github-pages/updates.json"  # change this
+UPDATE_FEED = "https://therealkushi.github.io/Cobalt-Browser/updates.json"
 APP_ID = "cobalt.browser.1.0"  # Windows taskbar AppUserModelID
 
 if __name__ == "__main__":
