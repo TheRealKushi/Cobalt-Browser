@@ -1,0 +1,45 @@
+name: build-windows
+
+on:
+  push:
+    tags:
+      - 'v*'         # push tags like v1.0.1 to trigger a build/release
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller PyQt5 PyQtWebEngine
+
+      - name: Build (PyInstaller)
+        shell: pwsh
+        run: |
+          pyinstaller `
+            --onefile `
+            --windowed `
+            --icon=assets/icon.ico `
+            --name=cobalt_browser `
+            --add-data "assets/icon.ico;assets" `
+            main.py
+
+      - name: Upload artifact (for CI debugging)
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobalt_browser
+          path: dist/cobalt_browser.exe
+
+      - name: Create GitHub Release & upload EXE
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/cobalt_browser.exe
+          draft: false
+          prerelease: false
