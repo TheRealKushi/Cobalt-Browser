@@ -4,7 +4,7 @@ import json
 from PyQt5.QtWidgets import (
     QMainWindow, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QWidget,
     QProgressBar, QTabWidget, QAction, QInputDialog, QTabBar, QToolButton,
-    QGraphicsDropShadowEffect, QLabel, QCompleter
+    QGraphicsDropShadowEffect, QLabel, QCompleter, QMenu
 )
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtCore import QUrl, Qt, QObject, QEvent, QTimer
@@ -141,6 +141,7 @@ class Browser(QMainWindow):
         # Initial tab
         self.add_tab("https://google.com", "Home")
 
+    # ------------------ Add Tab ------------------
     def add_tab(self, url=None, label="New Tab"):
         tab = QWidget()
         layout = QVBoxLayout(tab)
@@ -154,11 +155,9 @@ class Browser(QMainWindow):
         url_bar.setPlaceholderText("Search or enter web address")
         url_bar.setStyleSheet("QLineEdit { border-radius: 12px; padding: 4px; border: 1px solid gray; }")
 
-        # Track typing state
         url_bar._user_typing = False
         url_bar.installEventFilter(self)
 
-        # Autocomplete
         completer = QCompleter([], url_bar)
         completer.setCaseSensitivity(Qt.CaseInsensitive)
         url_bar.setCompleter(completer)
@@ -166,6 +165,7 @@ class Browser(QMainWindow):
         def on_text_edited(text):
             url_bar._user_typing = True
             self.fetch_online_suggestions(text, completer)
+
         url_bar.textEdited.connect(on_text_edited)
 
         nav_layout.addWidget(back_btn)
@@ -189,6 +189,13 @@ class Browser(QMainWindow):
         if url:
             web_view.load(QUrl(url))
 
+        # Custom context menu
+        web_view.setContextMenuPolicy(Qt.CustomContextMenu)
+        web_view.customContextMenuRequested.connect(
+            lambda pos, wv=web_view: self.show_custom_context_menu(pos, wv)
+        )
+
+        # Tab setup
         index = self.tabs.count()
         self.tabs.addTab(tab, "")
         self.set_tab_label(tab, label)
@@ -199,6 +206,48 @@ class Browser(QMainWindow):
         self.tabs.tabBar().setTabButton(index, QTabBar.RightSide, btn)
         self.watcher.update_plus_button_position()
 
+    # ------------------ Custom context menu ------------------
+    def show_custom_context_menu(self, pos, web_view):
+        page = web_view.page()
+        menu = page.createStandardContextMenu()  # preserve standard options
+
+        # Detect if a video element is under cursor
+        js_check_video = """
+        (function() {
+            var el = document.elementFromPoint(%d, %d);
+            while(el) {
+                if (el.tagName && el.tagName.toLowerCase() === 'video') return true;
+                el = el.parentElement;
+            }
+            return false;
+        })()
+        """ % (pos.x(), pos.y())
+
+        def add_pip_if_video(result):
+            if result:  # Only add PiP if cursor is on a video
+                pip_action = QAction("Picture in Picture", web_view)
+                pip_action.triggered.connect(lambda: self.activate_pip(web_view))
+                menu.insertAction(menu.actions()[0] if menu.actions() else None, pip_action)
+                menu.insertSeparator(menu.actions()[1] if len(menu.actions()) > 1 else None)
+            menu.exec_(web_view.mapToGlobal(pos))
+
+        page.runJavaScript(js_check_video, add_pip_if_video)
+
+    # ------------------ Activate PiP ------------------
+    def activate_pip(self, web_view):
+        js = """
+        var video = document.querySelector('video');
+        if (video) {
+            if (document.pictureInPictureElement) {
+                document.exitPictureInPicture();
+            } else {
+                video.requestPictureInPicture();
+            }
+        }
+        """
+        web_view.page().runJavaScript(js)
+
+    # ------------------ Event filter for URL bar ------------------
     def eventFilter(self, obj, event):
         if isinstance(obj, QLineEdit):
             if event.type() in (QEvent.MouseButtonPress, QEvent.FocusIn):
@@ -207,6 +256,7 @@ class Browser(QMainWindow):
                         QTimer.singleShot(0, obj.selectAll)
         return super().eventFilter(obj, event)
 
+    # ------------------ Autocomplete ------------------
     def fetch_online_suggestions(self, text, completer):
         if not text.strip():
             return
@@ -223,6 +273,7 @@ class Browser(QMainWindow):
         except Exception as e:
             print("Error parsing suggestions:", e)
 
+    # ------------------ Tab label helpers ------------------
     def update_tab_label(self, tab, title):
         index = self.tabs.indexOf(tab)
         if index != -1:
@@ -231,6 +282,7 @@ class Browser(QMainWindow):
     def set_tab_label(self, tab, label):
         self.update_tab_label(tab, label)
 
+    # ------------------ Load URL ------------------
     def load_url(self, web_view, url_bar):
         query = url_bar.text().strip()
         if not query:
@@ -243,6 +295,7 @@ class Browser(QMainWindow):
         if url not in self.history:
             self.history.append(url)
 
+    # ------------------ Close tab ------------------
     def close_tab(self, index):
         if index != -1 and self.tabs.count() > 1:
             self.tabs.removeTab(index)
@@ -250,6 +303,7 @@ class Browser(QMainWindow):
         else:
             self.close()
 
+    # ------------------ Bookmarks ------------------
     def add_bookmark(self):
         current_tab = self.tabs.currentWidget()
         web_view = current_tab.findChild(QWebEngineView)
