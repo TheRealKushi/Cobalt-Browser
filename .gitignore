@@ -1,0 +1,14 @@
+# Ignore PyInstaller build folders
+build/
+dist/
+
+# Ignore pyc files
+__pycache__/
+*.pyc
+
+# Ignore logs
+*.log
+
+# Ignore virtual environments
+venv/
+.venv/
