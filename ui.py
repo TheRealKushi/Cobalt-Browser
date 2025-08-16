@@ -99,7 +99,6 @@ class Browser(QMainWindow):
             base_path = os.path.dirname(os.path.abspath(__file__))
         icon_path = os.path.join(base_path, "assets", "icon.ico")
         self.setWindowIcon(QIcon(icon_path))
-        # --------------------------------------------
 
         # Window setup
         self.setWindowTitle("Cobalt Browser")
@@ -178,6 +177,9 @@ class Browser(QMainWindow):
         web_view = QWebEngineView()
         layout.addWidget(web_view)
 
+        # Smooth scrolling injection
+        web_view.loadFinished.connect(lambda _: self.enable_smooth_scroll(web_view))
+
         url_bar.returnPressed.connect(lambda: self.load_url(web_view, url_bar))
         web_view.urlChanged.connect(lambda qurl: url_bar.setText(qurl.toString()))
         back_btn.clicked.connect(web_view.back)
@@ -205,6 +207,27 @@ class Browser(QMainWindow):
         btn.setFixedSize(16, 16)
         self.tabs.tabBar().setTabButton(index, QTabBar.RightSide, btn)
         self.watcher.update_plus_button_position()
+
+    # ------------------ Smooth scroll ------------------
+    def enable_smooth_scroll(self, web_view):
+        js = """
+        // Enable smooth scrolling for wheel, touchpad, and arrow keys
+        document.documentElement.style.scrollBehavior = 'smooth';
+
+        document.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            window.scrollBy({top: e.deltaY, left: e.deltaX, behavior: 'smooth'});
+        }, {passive: false});
+
+        document.addEventListener('keydown', function(e) {
+            let amount = 40;
+            if (e.key === 'ArrowDown') { window.scrollBy({top: amount, behavior:'smooth'}); e.preventDefault(); }
+            if (e.key === 'ArrowUp')   { window.scrollBy({top: -amount, behavior:'smooth'}); e.preventDefault(); }
+            if (e.key === 'PageDown')  { window.scrollBy({top: window.innerHeight, behavior:'smooth'}); e.preventDefault(); }
+            if (e.key === 'PageUp')    { window.scrollBy({top: -window.innerHeight, behavior:'smooth'}); e.preventDefault(); }
+        });
+        """
+        web_view.page().runJavaScript(js)
 
     # ------------------ Custom context menu ------------------
     def show_custom_context_menu(self, pos, web_view):
